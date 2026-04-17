@@ -12,6 +12,18 @@
     If prefix names are required short names can be disabled:
         #define ARENA_NO_SHORT_NAMES
 
+    Unit tests can be enabled by including the library as described above and 
+    defining ARENA_UNIT_TESTS. The function _da_arena_unit_tests() must then be called to run the tests.
+    Example:
+        #define ARENA_IMPLEMENTATION
+        #define ARENA_UNIT_TESTS
+        #include "arena.h"
+
+        int main() {
+            _da_arena_unit_tests();
+            return 0;
+        }
+
     Functionality provided by this library:
         - initialization of contigous memory buffer of a specified size
         - simple allocation, pushing to the end of the buffer
@@ -75,6 +87,8 @@ typedef struct {
     size_t capacity;
     char * base;
 } arena_t;
+// // // // // // // // // // // // // // //
+extern void _da_arena_unit_tests(void);
 // // // // // // // // // // // // // // // 
 // Short names API
 #ifndef ARENA_NO_SHORT_NAMES
@@ -220,6 +234,53 @@ void * _arena_dyn_realloc(arena_t *arena, void *ptr, size_t size) {
     }
     // no block exists (alloc case)
     return _arena_dyn_alloc(arena, size);
+}
+
+#endif
+
+#ifdef ARENA_UNIT_TESTS
+
+#include <stdlib.h>
+#include <assert.h>
+
+void _da_arena_unit_tests(void) {
+    arena_t *test_arena = _arena_init(40000);
+
+    int * test_one = arena_dyn_realloc(test_arena, NULL, sizeof(int)*20);
+    int * test_two = arena_dyn_realloc(test_arena, NULL, sizeof(int)*10);
+
+    test_one[0] = 10;
+    test_one[2] = 15;
+    test_one[3] = 20;
+    test_one[4] = 25;
+
+    test_two[0] = 23;
+    
+    char * ptr = get_next_ptr(get_first_block(test_arena));
+    assert(((int*)ptr)[0] == 23);
+
+    char * first_ptr = get_first_block(test_arena);
+    assert(((int*)first_ptr)[0] == 10);
+
+    test_one = arena_dyn_realloc(test_arena,test_one,sizeof(int)*25);
+
+    char * realloc_ptr_one = get_next_ptr(get_next_ptr(get_first_block(test_arena)));
+    assert(((int*)realloc_ptr_one)[0] == 10);
+
+    int * test_three = arena_dyn_realloc(test_arena, NULL, sizeof(int)*20);
+
+    test_three[0] = 65;
+
+    char * realloc_ptr_three = get_first_block(test_arena);
+    assert(((int*)realloc_ptr_three)[0] == 65);
+
+    test_one = arena_dyn_realloc(test_arena,test_one,sizeof(int)*50);
+    test_two = arena_dyn_realloc(test_arena,test_two,sizeof(int)*20);
+
+    realloc_ptr_one = get_next_ptr(get_next_ptr(get_next_ptr(get_first_block(test_arena))));
+    char * realloc_ptr_two = get_next_ptr(get_next_ptr(get_first_block(test_arena)));
+    assert(((int*)realloc_ptr_one)[0] == 10);
+    assert(((int*)realloc_ptr_two)[0] == 23);
 }
 
 #endif
