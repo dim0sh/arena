@@ -166,6 +166,11 @@ void * _arena_realloc(arena_t *arena, void *ptr, size_t size) {
             header->committed = size;
             return ptr;
         }
+        if ((header->block_size + sizeof(arena_header_t)) >= arena->offset && size > header->block_size) { // if block ist last block size of block can be increased in-place
+            arena->offset += (size - header->block_size);
+            header->block_size = size;
+            header->committed = size; 
+        }
         void * ret_ptr = _arena_alloc(arena, size);
         memmove_s(ret_ptr, size, ptr, header->block_size);
         header->committed = 0;
