@@ -52,7 +52,7 @@
 // Helper macros
 //
 // These macros are used to navigate the arena like a list. 
-// These operations are required to enable reallocation, 
+// These operations are required to enable reallocation,
 // by saving information about single blocks in a "header" before the pointer to the block.
 // This "header" can also be used to traverse the list block by block and aid in defragmentation and freeing of blocks.
 //
@@ -226,6 +226,11 @@ void * _arena_dyn_realloc(arena_t *arena, void *ptr, size_t size) {
         if (header->block_size >= size) {
             header->committed = size;
             return ptr;
+        }
+        if ((header->block_size + sizeof(arena_header_t)) >= arena->offset && size > header->block_size) { // if block ist last block size of block can be increased in-place
+            arena->offset += (size - header->block_size);
+            header->block_size = size;
+            header->committed = size; 
         }
         void * ret_ptr = _arena_dyn_alloc(arena, size);
         memmove_s(ret_ptr, size, ptr, header->block_size);
